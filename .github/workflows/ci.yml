@@ -1,85 +1,89 @@
-name: CI
-on:
-  push:
-    paths:
-      - '**.java'
-      - '**.xml'
-      - '.github/workflows/*.yml'
-  pull_request:
-
 jobs:
   supported-jdk:
-    name: ${{ matrix.title }}
     continue-on-error: ${{ matrix.experimental }}
+    name: ${{ matrix.title }}
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
+      name: Checkout from Git
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
+      name: Cache Maven repo
+      uses: actions/cache@v4
+      with:
+        key: ${{ runner.os }}-mvn-${{ matrix.cache-id }}-${{ hashFiles('**/pom.xml')
+          }}
+        path: '~/.m2/repository
+
+          target/spotless-node-modules-prettier-format
+
+          '
+        restore-keys: '${{ runner.os }}-mvn-${{ matrix.cache-id }}
+
+          '
+    - continue-on-error: true
+      if: ${{ !matrix.experimental }}
+      name: Set up JDK ${{ matrix.java }} (regular)
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ matrix.dist }}
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      if: ${{ matrix.experimental && github.event_name != 'pull_request' }}
+      name: Set up JDK ${{ matrix.java }} (oracle)
+      uses: oracle-actions/setup-java@v1
+      with:
+        release: ${{ matrix.java }}
+        website: jdk.java.net
+    - continue-on-error: true
+      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
+      name: Display JDK version
+      run: java -version
+    - continue-on-error: true
+      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
+      name: Run Maven
+      run: mvn clean verify --no-transfer-progress ${{ matrix.flags }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - title: "Supported JDK 8"
-            experimental: false
-            cache-id: "jdk8"
-            java: 8
-            dist: temurin
-            flags: ""
-          - title: "Supported JDK 11"
-            experimental: false
-            cache-id: "jdk11"
-            java: 11
-            dist: temurin
-            flags: ""
-          - title: "Supported JDK 17"
-            experimental: false
-            cache-id: "jdk17"
-            java: 17
-            dist: temurin
-            flags: ""
-          - title: "Supported JDK 21"
-            experimental: false
-            cache-id: "jdk21"
-            java: 21
-            dist: temurin
-            flags: ""
-          - title: "Experimental JDK EA (simplified)"
-            experimental: true
-            cache-id: "jdk-ea-simple"
-            java: "ea"
-            flags: "-Dexperimental -DdisableStaticAnalysis"
-          - title: "Experimental JDK EA (full)"
-            experimental: true
-            cache-id: "jdk-ea-full"
-            java: "ea"
-            flags: "-Dexperimental"
-    runs-on: ubuntu-latest
-    steps:
-    - name: 'Checkout from Git'
-      # Can't refer to matrix in job if conditional, so we have to repeat it every step: https://github.com/actions/runner/issues/1985
-      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
-      uses: actions/checkout@v4
-    - name: 'Cache Maven repo'
-      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
-      uses: actions/cache@v4
-      with:
-          path: |
-            ~/.m2/repository
-            target/spotless-node-modules-prettier-format
-          key: ${{ runner.os }}-mvn-${{ matrix.cache-id }}-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-mvn-${{ matrix.cache-id }}
-    - name: 'Set up JDK ${{ matrix.java }} (regular)'
-      if: ${{ !matrix.experimental }}
-      uses: actions/setup-java@v4
-      with:
-          distribution: ${{ matrix.dist }}
-          java-version: ${{ matrix.java }}
-    - name: 'Set up JDK ${{ matrix.java }} (oracle)'
-      if: ${{ matrix.experimental && github.event_name != 'pull_request' }}
-      uses: oracle-actions/setup-java@v1
-      with:
-          website: jdk.java.net
-          release: ${{ matrix.java }}
-    - name: 'Display JDK version'
-      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
-      run: java -version
-    - name: 'Run Maven'
-      if: ${{ !(matrix.experimental && github.event_name == 'pull_request') }}
-      run: mvn clean verify --no-transfer-progress ${{ matrix.flags }}
+        - cache-id: jdk8
+          dist: temurin
+          experimental: false
+          flags: ''
+          java: 8
+          title: Supported JDK 8
+        - cache-id: jdk11
+          dist: temurin
+          experimental: false
+          flags: ''
+          java: 11
+          title: Supported JDK 11
+        - cache-id: jdk17
+          dist: temurin
+          experimental: false
+          flags: ''
+          java: 17
+          title: Supported JDK 17
+        - cache-id: jdk21
+          dist: temurin
+          experimental: false
+          flags: ''
+          java: 21
+          title: Supported JDK 21
+        - cache-id: jdk-ea-simple
+          experimental: true
+          flags: -Dexperimental -DdisableStaticAnalysis
+          java: ea
+          title: Experimental JDK EA (simplified)
+        - cache-id: jdk-ea-full
+          experimental: true
+          flags: -Dexperimental
+          java: ea
+          title: Experimental JDK EA (full)
+name: CI
+on:
+  repository_dispatch:
+    types: trigger-ga___ci.yml
